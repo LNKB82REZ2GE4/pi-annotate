@@ -2,6 +2,32 @@
 
 All notable changes to Pi Annotate.
 
+## [0.4.1] - 2026-04-04
+
+### Changed
+- Added a `promptSnippet` for the `annotate` tool so Pi 0.59+ includes it in the default tool prompt section and only surfaces it for explicit visual-annotation requests.
+
+## [0.4.0] - 2026-02-08
+
+### Added
+- **Edit capture** — New "Etch" toolbar toggle records DevTools edits via MutationObserver and produces structured property-level diffs. Tracks inline style changes, CSS rule modifications, class additions/removals, text edits, attribute changes, and structural DOM mutations
+- **Before/after screenshots** — Undo-screenshot-redo cycle captures page state before and after edits. Visual-only undo (style/class attributes + stylesheet rules) covers ~95% of DevTools edits with near-perfect reliability
+- **Stylesheet diffing** — Serializes all same-origin stylesheets when Etch is toggled on, diffs against current state at submit. Reports per-property changes with full selector context including `@media`/`@supports`/`@layer` nesting
+- **Cross-origin stylesheet warning** — Output notes when CDN-hosted stylesheets couldn't be tracked
+- **Changed element indicators** — Elements modified during recording get dashed amber outlines, making tracked changes visible at a glance
+
+### Changed
+- **Buffer limits** — Socket and native message buffers increased from 8MB to 32MB to accommodate before/after screenshots alongside element crops
+- **Log redaction** — `beforeScreenshot` and `afterScreenshot` fields now redacted from native host logs
+
+### Technical
+- Added `StylePropertyChange`, `InlineStyleChange`, `RuleChange`, `DOMChange`, `EditCapture` interfaces to `types.ts`
+- 16 new functions in `content.js` for observer lifecycle, stylesheet serialization/diffing, inline style diffing, DOM change compilation, and undo/redo screenshot cycle
+- `formatEditCapture()` in `index.ts` renders structured diffs as markdown with before/after screenshot file paths
+- Transition/animation killer stylesheet prevents visual artifacts during the screenshot cycle
+- Observer disconnect in both `resetState()` and `deactivate()` prevents zombie observers on re-activation
+- DOM write guards in `updateEtchCounter()` prevent MutationObserver feedback loops
+
 ## [0.3.6] - 2026-02-01
 
 ### Fixed

@@ -4,11 +4,11 @@ import * as net from "node:net";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import type { AnnotationResult, ElementSelection } from "./types.js";
+import type { AnnotationResult, ElementSelection, EditCapture } from "./types.js";
 
 const SOCKET_PATH = "/tmp/pi-annotate.sock";
 const TOKEN_PATH = "/tmp/pi-annotate.token";
-const MAX_SOCKET_BUFFER = 8 * 1024 * 1024; // 8MB
+const MAX_SOCKET_BUFFER = 32 * 1024 * 1024; // 32MB (increased from 8MB for edit capture payloads)
 const MAX_SCREENSHOT_BYTES = 15 * 1024 * 1024; // 15MB
 
 export default function (pi: ExtensionAPI) {
@@ -213,6 +213,64 @@ export default function (pi: ExtensionAPI) {
   // ─────────────────────────────────────────────────────────────────────
   // Format Result
   // ─────────────────────────────────────────────────────────────────────
+
+  function formatEditCapture(capture: EditCapture): string {
+    let output = "";
+
+    if (capture.warnings?.length) {
+      for (const w of capture.warnings) {
+        output += `> **Note:** ${w}\n`;
+      }
+      output += "\n";
+    }
+
+    // Inline style changes
+    if (capture.inlineStyles.length > 0) {
+      output += `### Inline Style Changes\n\n`;
+      for (const change of capture.inlineStyles) {
+        output += `**\`${change.selector}\`**\n`;
+        for (const c of change.changed) {
+          output += `- \`${c.property}\`: \`${c.from}\` → \`${c.to}\`\n`;
+        }
+        for (const [prop, value] of Object.entries(change.added)) {
+          output += `- \`${prop}\`: added \`${value}\`\n`;
+        }
+        for (const prop of change.removed) {
+          output += `- \`${prop}\`: removed\n`;
+        }
+        output += "\n";
+      }
+    }
+
+    // Stylesheet rule changes
+    if (capture.rules.length > 0) {
+      output += `### CSS Rule Changes\n\n`;
+      for (const change of capture.rules) {
+        output += `**\`${change.ruleSelector}\`** (${change.sheet})\n`;
+        for (const c of change.changed) {
+          output += `- \`${c.property}\`: \`${c.from}\` → \`${c.to}\`\n`;
+        }
+        for (const [prop, value] of Object.entries(change.added)) {
+          output += `- \`${prop}\`: added \`${value}\`\n`;
+        }
+        for (const prop of change.removed) {
+          output += `- \`${prop}\`: removed\n`;
+        }
+        output += "\n";
+      }
+    }
+
+    // DOM changes
+    if (capture.dom.length > 0) {
+      output += `### DOM Changes\n\n`;
+      for (const change of capture.dom) {
+        output += `- **\`${change.selector}\`** — ${change.detail}\n`;
+      }
+      output += "\n";
+    }
+
+    return output;
+  }
   
   async function formatResult(result: AnnotationResult): Promise<string> {
     if (!result.success) {
@@ -369,6 +427,38 @@ export default function (pi: ExtensionAPI) {
       }
       output += "\n";
     }
+
+    if (result.editCapture && result.editCapture.changeCount > 0) {
+      const ec = result.editCapture;
+      output += `## Edit Capture (${ec.changeCount} changes, ${Math.round(ec.duration / 1000)}s)\n\n`;
+      output += formatEditCapture(ec);
+
+      // Before/after screenshots
+      if (ec.beforeScreenshot || ec.afterScreenshot) {
+        output += `### Before/After Screenshots\n\n`;
+        if (ec.beforeScreenshot) {
+          try {
+            const p = path.join(os.tmpdir(), `pi-annotate-${timestamp}-before.png`);
+            const buf = Buffer.from(ec.beforeScreenshot.replace(/^data:image\/\w+;base64,/, ""), "base64");
+            if (buf.length <= MAX_SCREENSHOT_BYTES) {
+              await fs.promises.writeFile(p, buf);
+              output += `- Before: ${p}\n`;
+            }
+          } catch {}
+        }
+        if (ec.afterScreenshot) {
+          try {
+            const p = path.join(os.tmpdir(), `pi-annotate-${timestamp}-after.png`);
+            const buf = Buffer.from(ec.afterScreenshot.replace(/^data:image\/\w+;base64,/, ""), "base64");
+            if (buf.length <= MAX_SCREENSHOT_BYTES) {
+              await fs.promises.writeFile(p, buf);
+              output += `- After: ${p}\n`;
+            }
+          } catch {}
+        }
+        output += "\n";
+      }
+    }
     
     return output;
   }
@@ -385,6 +475,8 @@ export default function (pi: ExtensionAPI) {
       "Only use when the user explicitly asks to annotate, visually point something out, or show you UI issues. " +
       "Returns structured annotations with CSS selectors and element info. " +
       "If no URL is provided, uses the current active Chrome tab.",
+    promptSnippet:
+      "Use only when the user explicitly asks for visual annotation or UI pointing. Call with {url?} and return selected element annotations.",
     parameters: Type.Object({
       url: Type.Optional(Type.String({
         description: "URL to annotate. If omitted, uses current Chrome tab.",

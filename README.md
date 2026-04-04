@@ -63,6 +63,7 @@ Restart Chrome. The popup will show **Connected** when ready.
 | Scroll to element | Click selector in note card |
 | Toggle note | Click numbered badge |
 | Expand/collapse all | ▼/▲ buttons in toolbar |
+| Toggle edit capture | "Etch" toggle in toolbar |
 | Toggle annotation UI | `⌘/Ctrl+Shift+P` |
 | Close | `ESC` |
 
@@ -73,6 +74,8 @@ Restart Chrome. The popup will show **Connected** when ready.
 **Inline Note Cards** — Draggable floating cards with per-element comments, SVG connectors linking notes to elements, click-to-scroll, and per-element screenshot toggles.
 
 **Screenshots** — Individual crops per element (20px padding) or full-page mode with numbered badges drawn on the screenshot to identify elements. Toggle per element with the 📷 button.
+
+**Edit Capture** — Toggle "Etch" in the toolbar to record DevTools edits. Change inline styles, modify CSS rules, add/remove classes, edit text — everything is tracked via MutationObserver. A pulsing red dot and badge counter show recording status. At submit, the extension takes before/after screenshots by briefly undoing visual changes, and produces structured property-level diffs the agent can map to source code. Works alongside element selection or standalone.
 
 **Restricted Tabs** — If the current tab is `chrome://` or other restricted URLs, providing a URL opens a new tab automatically. Popup button and keyboard shortcut auto-inject the content script on fresh tabs.
 
@@ -109,9 +112,27 @@ Restart Chrome. The popup will show **Connected** when ready.
 
 - Element 1: /var/folders/.../pi-annotate-...-el1.png
 - Element 2: /var/folders/.../pi-annotate-...-el2.png
+
+## Edit Capture (2 changes, 35s)
+
+### Inline Style Changes
+
+**`#submit-btn`**
+- `background-color`: `rgb(59, 130, 246)` → `rgb(37, 99, 235)`
+- `border-radius`: added `8px`
+
+### CSS Rule Changes
+
+**`.btn-primary:hover`** (styles.css)
+- `background-color`: `rgb(37, 99, 235)` → `rgb(29, 78, 216)`
+
+### Before/After Screenshots
+
+- Before: /var/folders/.../pi-annotate-...-before.png
+- After: /var/folders/.../pi-annotate-...-after.png
 ```
 
-Debug mode adds computed styles, parent context, and CSS variables per element.
+Debug mode adds computed styles, parent context, and CSS variables per element. Edit capture appears when the Etch toggle is enabled and changes are detected.
 
 ## Architecture
 

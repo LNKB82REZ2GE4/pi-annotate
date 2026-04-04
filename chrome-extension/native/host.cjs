@@ -5,8 +5,8 @@ const fs = require("fs");
 const SOCKET_PATH = "/tmp/pi-annotate.sock";
 const TOKEN_PATH = "/tmp/pi-annotate.token";
 const LOG_FILE = "/tmp/pi-annotate-host.log";
-const MAX_NATIVE_MESSAGE_BYTES = 8 * 1024 * 1024; // 8MB
-const MAX_SOCKET_BUFFER = 8 * 1024 * 1024; // 8MB
+const MAX_NATIVE_MESSAGE_BYTES = 32 * 1024 * 1024; // 32MB (increased from 8MB for edit capture payloads)
+const MAX_SOCKET_BUFFER = 32 * 1024 * 1024; // 32MB
 const MAX_LOG_BYTES = 5 * 1024 * 1024; // 5MB
 
 process.umask(0o077);
@@ -82,7 +82,7 @@ function processInput() {
 
 function redactForLog(msg) {
   return JSON.stringify(msg, (key, value) => {
-    if (key === "screenshot") return "[redacted]";
+    if (key === "screenshot" || key === "beforeScreenshot" || key === "afterScreenshot") return "[redacted]";
     if (key === "screenshots") return Array.isArray(value) ? `[${value.length} screenshots]` : "[redacted]";
     if (key === "dataUrl") return "[redacted]";
     return value;

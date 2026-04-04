@@ -94,6 +94,50 @@ export interface Viewport {
   height: number;
 }
 
+/** Individual CSS property change */
+export interface StylePropertyChange {
+  property: string;
+  from: string;
+  to: string;
+}
+
+/** Inline style changes on a specific element */
+export interface InlineStyleChange {
+  selector: string;
+  tag: string;
+  added: Record<string, string>;
+  changed: StylePropertyChange[];
+  removed: string[];
+}
+
+/** CSS rule change in a stylesheet */
+export interface RuleChange {
+  ruleSelector: string;
+  sheet: string;
+  added: Record<string, string>;
+  changed: StylePropertyChange[];
+  removed: string[];
+}
+
+/** DOM mutation (text, attribute, structural) */
+export interface DOMChange {
+  type: "text" | "attribute" | "added" | "removed" | "structural";
+  selector: string;
+  detail: string;
+}
+
+/** Complete edit capture result */
+export interface EditCapture {
+  inlineStyles: InlineStyleChange[];
+  rules: RuleChange[];
+  dom: DOMChange[];
+  beforeScreenshot?: string;
+  afterScreenshot?: string;
+  duration: number;
+  changeCount: number;
+  warnings?: string[];
+}
+
 /** Result returned from annotation session */
 export interface AnnotationResult {
   /** Whether the annotation completed successfully */
@@ -116,4 +160,5 @@ export interface AnnotationResult {
   timeout?: boolean;
   /** Error or cancellation reason */
   reason?: string;
+  editCapture?: EditCapture;
 }
